@@ -1,11 +1,14 @@
-;CP77_TogADS script by p0tat0gunner (Updated for MB4/MB5)
+; CP77_TogADS script by p0tat0gunner (Updated for MB4/MB5 + minor fixes)
 #SingleInstance, Force
 FileInstall, tads_running.wav, %A_WorkingDir%\tads_running.wav, 1
 FileInstall, tads_closing.wav, %A_WorkingDir%\tads_closing.wav, 1
 FileInstall, tads_disabled.wav, %A_WorkingDir%\tads_disabled.wav, 1
 FileInstall, tads_enabled.wav, %A_WorkingDir%\tads_enabled.wav, 1
-selhk:= false
-selmb:= false
+
+selhk := false
+selmb := false
+Toggle := 0  ; Aim toggle state
+
 Menu, Tray, NoStandard
 Menu, Tray, Add, Reset, ResetSub
 Menu, Tray, Add, Exit, ExitSub
@@ -15,173 +18,188 @@ OnExit, ExitSub
 Gui, Color, 280000, Black
 Gui, Font, s13
 Gui, Font, cff0000
-Gui, add, text,, Please enter an Activation Hotkey:
+Gui, Add, Text,, Please enter an Activation Hotkey:
 Gui, Font, cffcc00
-Gui, add, Hotkey, vHKA gHKAEvent
+Gui, Add, Hotkey, vHKA gHKAEvent
 Gui, Add, Edit, yp vCtrlHKA
 Gui, Font, cff0000
-Gui, add, text,, Please enter an Exit Hotkey:
+Gui, Add, Text,, Please enter an Exit Hotkey:
 Gui, Font, cffcc00
-Gui, add, Hotkey, vHKE gHKEEvent
+Gui, Add, Hotkey, vHKE gHKEEvent
 Gui, Add, Edit, yp vCtrlHKE
 Gui, Font, cff0000
-Gui, add, text,, Please select your in-game Aim Key:
+Gui, Add, Text,, Please select your in-game Aim Key:
 Gui, Font, c00e3ff
-Gui, add, Radio, vMK, Right Mouse Button
-Gui, add, Radio,, Middle Mouse Button
-Gui, add, Radio,, Side Mouse Button Up (MB5) ; New option 3
-Gui, add, Radio,, Side Mouse Button Down (MB4) ; New option 4
-Gui, add, Button, Default gSubmit, Confirm and Run with Selected Keys
+Gui, Add, Radio, vMK, Right Mouse Button
+Gui, Add, Radio,, Middle Mouse Button
+Gui, Add, Radio,, Side Mouse Button Up (MB5)
+Gui, Add, Radio,, Side Mouse Button Down (MB4)
+Gui, Add, Button, Default gSubmit, Confirm and Run with Selected Keys
 Gui, Font, s9
 Gui, Font, c00ff5b
-Gui, add, text, xm+85, © 2021 p0tat0gunner ; Updated year
+Gui, Add, Text, xm+85, © 2021 p0tat0gunner
+
+; Initialize preview fields
 HKAEvent()
 HKEEvent()
-Gui, show, AutoSize, CP77 Toggle AIM/ADS GUI
-OnMessage(0x0F, "HKAEvent") ; WM_PAINT = 0x0F
+
+Gui, Show, AutoSize, CP77 Toggle AIM/ADS GUI
+
+; Keep previews refreshed when GUI repaints (optional but harmless)
+OnMessage(0x0F, "HKAEvent") ; WM_PAINT
+
 Return
 
+; --- Hotkey preview helpers ---
 HKAEvent() {
-GuiControlGet, HKA
-HKA := Format("{:T}", HKA)
-HKA := StrReplace(HKA, "+", "Shift + ")
-HKA := StrReplace(HKA, "^", "Ctrl + ")
-HKA := StrReplace(HKA, "!", "Alt + ")
-GuiControl, , CtrlHKA, % HKA ? HKA : "None"
-HKEEvent()
-}
-HKEEvent() {
-GuiControlGet, HKE
-HKE := Format("{:T}", HKE)
-HKE := StrReplace(HKE, "+", "Shift + ")
-HKE := StrReplace(HKE, "^", "Ctrl + ")
-HKE := StrReplace(HKE, "!", "Alt + ")
-GuiControl, , CtrlHKE, % HKE ? HKE : "None"
+    GuiControlGet, HKA
+    HKA := Format("{:T}", HKA)
+    HKA := StrReplace(HKA, "+", "Shift + ")
+    HKA := StrReplace(HKA, "^", "Ctrl + ")
+    HKA := StrReplace(HKA, "!", "Alt + ")
+    GuiControl, , CtrlHKA, % HKA ? HKA : "None"
+    HKEEvent()
 }
 
+HKEEvent() {
+    GuiControlGet, HKE
+    HKE := Format("{:T}", HKE)
+    HKE := StrReplace(HKE, "+", "Shift + ")
+    HKE := StrReplace(HKE, "^", "Ctrl + ")
+    HKE := StrReplace(HKE, "!", "Alt + ")
+    GuiControl, , CtrlHKE, % HKE ? HKE : "None"
+}
+
+; --- Submit button handler ---
 Submit:
 Gui, Submit
-If(HKA<>"" and HKE<>"")
+
+; Validate activation/exit hotkeys
+if (HKA != "" && HKE != "")
 {
-IfNotEqual, HKA, %HKE%
-{
-selhk:=true
+    if (HKA != HKE)
+    {
+        selhk := true
+    }
+    else
+    {
+        selhk := false
+        MsgBox, 16, Error, The Activation and Exit Hotkeys cannot be the same.`nPlease re-assign unique hotkeys!
+        Gui, Show
+    }
 }
 else
 {
-selhk:= false
-Msgbox, 16, Error, The Activation and Exit Hotkeys cannot be Same, Please Re-assign Unique Hotkeys!
-Gui, show
-}
-}
-else
-{
-selhk:= false
-Msgbox, 16, Error, The Activation and Exit Hotkeys cannot be None, Please Assign Both Hotkeys!
-Gui, show
+    selhk := false
+    MsgBox, 16, Error, The Activation and Exit Hotkeys cannot be None.`nPlease assign both hotkeys!
+    Gui, Show
 }
 
-; --- Aim Key Validation (Updated to include 4 options) ---
-If MK between 1 and 4
+; Validate aim key (MK will be 1–4 for the 4 radios)
+if (MK >= 1 && MK <= 4)
 {
-selmb:= true
+    selmb := true
 }
 else
 {
-selmb:= false
-Msgbox, 16, Error, Please Select your Aim Key!
-Gui, show
+    selmb := false
+    MsgBox, 16, Error, Please select your Aim Key!
+    Gui, Show
 }
 
-If (selhk==true and selmb==true)
+; If both valid, bind hotkeys and start
+if (selhk && selmb)
 {
-Hotkey, % HKA, RunHKA
-Hotkey, % HKE, RunHKE
-SoundPlay, %A_WorkingDir%\tads_running.wav
+    Hotkey, %HKA%, RunHKA
+    Hotkey, %HKE%, RunHKE
+    SoundPlay, %A_WorkingDir%\tads_running.wav
 }
 else
 {
-MK=0
-Gui, show
+    MK := 0
+    Gui, Show
 }
 Return
 
+; --- Activation Hotkey: Toggle suspend + sounds ---
 RunHKA:
 Suspend, Toggle
-If Suspend:=!Suspend
-SoundPlay, %A_WorkingDir%\tads_disabled.wav
-Else	
-SoundPlay, %A_WorkingDir%\tads_enabled.wav
+if (A_IsSuspended)
+    SoundPlay, %A_WorkingDir%\tads_disabled.wav
+else
+    SoundPlay, %A_WorkingDir%\tads_enabled.wav
 Return
 
+; --- Exit Hotkey: Clean exit ---
 RunHKE:
 Suspend, Toggle
 SoundPlay, %A_WorkingDir%\tads_closing.wav, Wait
-GoSub DeleteSub
+GoSub, DeleteSub
 ExitApp
 Return
+
 GuiClose:
-GoSub DeleteSub
+GoSub, DeleteSub
 ExitApp
 Return
 
-; --- Toggle Aim/ADS Logic (Updated to include 4 options) ---
-#If MK=1 ; Right Mouse Button
+; --- Toggle Aim/ADS Logic (unchanged behavior) ---
+
+#If (MK = 1) ; Right Mouse Button
 *RButton Up::
-If (Toggle := !Toggle){
-Send {Click Down Right}
-}
-Else{
-Send {RButton up}
-}
+    if (Toggle := !Toggle) {
+        Send {Click Down Right}
+    } else {
+        Send {RButton Up}
+    }
 Return
 #If
 
-#If MK=2 ; Middle Mouse Button
+#If (MK = 2) ; Middle Mouse Button
 *MButton Up::
-If (Toggle := !Toggle){
-Send {Click Down Middle}
-}
-Else{
-Send {MButton up}
-}
+    if (Toggle := !Toggle) {
+        Send {Click Down Middle}
+    } else {
+        Send {MButton Up}
+    }
 Return
 #If
 
-#If MK=3 ; Side Mouse Button Up (MB5)
+#If (MK = 3) ; Side Mouse Button Up (MB5)
 *XButton2 Up::
-If (Toggle := !Toggle){
-Send {Click Down XButton2}
-}
-Else{
-Send {XButton2 up}
-}
+    if (Toggle := !Toggle) {
+        Send {Click Down XButton2}
+    } else {
+        Send {XButton2 Up}
+    }
 Return
 #If
 
-#If MK=4 ; Side Mouse Button Down (MB4)
+#If (MK = 4) ; Side Mouse Button Down (MB4)
 *XButton1 Up::
-If (Toggle := !Toggle){
-Send {Click Down XButton1}
-}
-Else{
-Send {XButton1 up}
-}
+    if (Toggle := !Toggle) {
+        Send {Click Down XButton1}
+    } else {
+        Send {XButton1 Up}
+    }
 Return
 #If
+
 ; --- End Toggle Aim/ADS Logic ---
 
 ExitSub:
-If A_ExitReason not in Logoff,Shutdown
+if (A_ExitReason not in Logoff, Shutdown)
 {
-SoundPlay, null000.wav
-GoSub DeleteSub
+    SoundPlay, null000.wav
+    GoSub, DeleteSub
 }
 ExitApp
 Return
+
 ResetSub:
 Reload
 Return
+
 DeleteSub:
 FileDelete, %A_WorkingDir%\tads_disabled.wav
 FileDelete, %A_WorkingDir%\tads_enabled.wav
