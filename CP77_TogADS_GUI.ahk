@@ -1,4 +1,4 @@
-; CP77_TogADS script by p0tat0gunner (Updated for MB4/MB5 + persistence)
+; CP77_TogADS script by p0tat0gunner (Updated for MB4/MB5 + persistence + Keyboard Aim)
 
 ;@Ahk2Exe-SetVersion 1.2.0.0
 ;@Ahk2Exe-SetName Cyberpunk 2077 Toggle ADS Mod
@@ -15,6 +15,7 @@ FileInstall, tads_enabled.wav, %A_WorkingDir%\tads_enabled.wav, 1
 selhk := false
 selmb := false
 Toggle := 0  ; Aim toggle state
+AimKey := "" ; Keyboard aim key (for MK = 5)
 
 IniFile := A_WorkingDir . "\CP77_TogADS_keys.ini"
 
@@ -40,13 +41,21 @@ Gui, Font, cff0000
 Gui, Add, Text,, Please select your in-game Aim Key:
 Gui, Font, c00e3ff
 
-; Aim key radios (now with hwnd handles)
+; Aim key radios (with hwnd handles)
 Gui, Add, Radio, vMK hwndhAim1, Right Mouse Button
 Gui, Add, Radio, hwndhAim2, Middle Mouse Button
 Gui, Add, Radio, hwndhAim3, Side Mouse Button Up (MB5)
 Gui, Add, Radio, hwndhAim4, Side Mouse Button Down (MB4)
+Gui, Add, Radio, hwndhAim5, Keyboard (enter Key below)
 
-; New persistence buttons (just above Confirm and Run)
+; Keyboard Aim key input (Hotkey + display text)
+Gui, Font, cff0000
+Gui, Add, Text,, If using Keyboard, choose an Aim Key:
+Gui, Font, cffcc00
+Gui, Add, Hotkey, vAimKey gAimKeyEvent
+Gui, Add, Edit, yp vCtrlAimKey
+
+; Persistence buttons (just above Confirm and Run)
 Gui, Add, Button, xm gSaveKeys, Save Keys
 Gui, Add, Button, x+10 gLoadKeys, Load Keys
 
@@ -58,6 +67,7 @@ Gui, Add, Text, xm+85, © 2025 p0tat0gunner
 ; Initialize preview fields
 HKAEvent()
 HKEEvent()
+AimKeyEvent()
 
 Gui, Show, AutoSize, CP77 Toggle AIM/ADS GUI
 
@@ -86,7 +96,32 @@ HKEEvent() {
     GuiControl, , CtrlHKE, % HKE ? HKE : "None"
 }
 
-; --- Save Keys button: persist HKA, HKE, MK ---
+AimKeyEvent() {
+    GuiControlGet, AimKey
+
+    ; If empty, show None and stop
+    if (AimKey = "")
+    {
+        GuiControl, , CtrlAimKey, None
+        return
+    }
+
+    ; Disallow combos: no Ctrl(^), Alt(!), Shift(+), Win(#)
+    if (InStr(AimKey, "^") || InStr(AimKey, "!") || InStr(AimKey, "+") || InStr(AimKey, "#"))
+    {
+        AimKey := ""
+        GuiControl, , AimKey,      ; clear Hotkey control
+        GuiControl, , CtrlAimKey, None
+        MsgBox, 16, Error, Keyboard Aim Key must be a single key (no Ctrl/Alt/Shift/Win).`nPlease press just one key.
+        return
+    }
+
+    ; Valid single key: show as-is (nicely formatted)
+    AimKeyText := Format("{:T}", AimKey)
+    GuiControl, , CtrlAimKey, % AimKeyText ? AimKeyText : "None"
+}
+
+; --- Save Keys button: persist HKA, HKE, MK, AimKey ---
 SaveKeys:
 Gui, Submit, NoHide
 
@@ -101,20 +136,26 @@ if (HKA = HKE)
     MsgBox, 16, Error, The Activation and Exit Hotkeys cannot be the same.`nPlease re-assign unique hotkeys before saving!
     Return
 }
-if (MK < 1 || MK > 4)
+if (MK < 1 || MK > 5)
 {
     MsgBox, 16, Error, Please select your Aim Key before saving!
     Return
 }
+if (MK = 5 && AimKey = "")
+{
+    MsgBox, 16, Error, Please choose a Keyboard Aim Key before saving!
+    Return
+}
 
-IniWrite, %HKA%, %IniFile%, Keys, HKA
-IniWrite, %HKE%, %IniFile%, Keys, HKE
-IniWrite, %MK%,  %IniFile%, Keys, MK
+IniWrite, %HKA%,    %IniFile%, Keys, HKA
+IniWrite, %HKE%,    %IniFile%, Keys, HKE
+IniWrite, %MK%,     %IniFile%, Keys, MK
+IniWrite, %AimKey%, %IniFile%, Keys, AimKey
 
 MsgBox, 64, Saved, Keys have been saved successfully.
 Return
 
-; --- Load Keys button: load last saved HKA, HKE, MK ---
+; --- Load Keys button: load last saved HKA, HKE, MK, AimKey ---
 LoadKeys:
 if !FileExist(IniFile)
 {
@@ -122,33 +163,44 @@ if !FileExist(IniFile)
     Return
 }
 
-IniRead, sHKA, %IniFile%, Keys, HKA, 
-IniRead, sHKE, %IniFile%, Keys, HKE, 
-IniRead, sMK,  %IniFile%, Keys, MK, 0
+IniRead, sHKA,    %IniFile%, Keys, HKA,
+IniRead, sHKE,    %IniFile%, Keys, HKE,
+IniRead, sMK,     %IniFile%, Keys, MK, 0
+IniRead, sAimKey, %IniFile%, Keys, AimKey,
 
 ; If missing/invalid, treat as not saved yet
-if (sHKA = "" || sHKE = "" || sMK < 1 || sMK > 4)
+if (sHKA = "" || sHKE = "" || sMK < 1 || sMK > 5)
 {
     MsgBox, 16, Error, Please Save Keys first
     Return
 }
 
+; If keyboard selected but aim key missing, also treat as invalid
+if (sMK = 5 && sAimKey = "")
+{
+    MsgBox, 16, Error, Please Save Keys first (Keyboard Aim key missing)
+    Return
+}
+
 ; Apply loaded values to variables
-HKA := sHKA
-HKE := sHKE
-MK  := sMK
+HKA    := sHKA
+HKE    := sHKE
+MK     := sMK
+AimKey := sAimKey
 
 ; Update hotkey GUI controls
-GuiControl, , HKA, %HKA%
-GuiControl, , HKE, %HKE%
+GuiControl, , HKA,    %HKA%
+GuiControl, , HKE,    %HKE%
+GuiControl, , AimKey, %AimKey%
 
 ; Clear all aim radios
 GuiControl, , %hAim1%, 0
 GuiControl, , %hAim2%, 0
 GuiControl, , %hAim3%, 0
 GuiControl, , %hAim4%, 0
+GuiControl, , %hAim5%, 0
 
-; Check the correct one based on MK (1–4)
+; Check the correct one based on MK (1–5)
 if (MK = 1)
     GuiControl, , %hAim1%, 1
 else if (MK = 2)
@@ -157,10 +209,13 @@ else if (MK = 3)
     GuiControl, , %hAim3%, 1
 else if (MK = 4)
     GuiControl, , %hAim4%, 1
+else if (MK = 5)
+    GuiControl, , %hAim5%, 1
 
-; Refresh preview text
+; Refresh preview text (this will also re-validate AimKey)
 HKAEvent()
 HKEEvent()
+AimKeyEvent()
 Return
 
 ; --- Submit button handler ---
@@ -188,10 +243,17 @@ else
     Gui, Show
 }
 
-; Validate aim key (MK will be 1–4 for the 4 radios)
-if (MK >= 1 && MK <= 4)
+; Validate aim key (MK will be 1–5 for the 5 radios)
+if (MK >= 1 && MK <= 5)
 {
-    selmb := true
+    if (MK = 5 && AimKey = "")
+    {
+        selmb := false
+        MsgBox, 16, Error, Please choose a Keyboard Aim Key!
+        Gui, Show
+    }
+    else
+        selmb := true
 }
 else
 {
@@ -205,6 +267,15 @@ if (selhk && selmb)
 {
     Hotkey, %HKA%, RunHKA
     Hotkey, %HKE%, RunHKE
+
+    ; Set up keyboard aim hotkey if MK = 5
+    if (MK = 5 && AimKey != "")
+    {
+        ; Turn off any previous registration just in case
+        Hotkey, *%AimKey% Up, Off
+        Hotkey, *%AimKey% Up, KeyboardAim
+    }
+
     SoundPlay, %A_WorkingDir%\tads_running.wav
 }
 else
@@ -277,6 +348,19 @@ Return
     }
 Return
 #If
+
+; For MK = 5 (Keyboard), the hotkey is dynamic via Hotkey command
+KeyboardAim:
+    ; Extra safety: only act if MK = 5 and AimKey is set
+    if (MK != 5 || AimKey = "")
+        Return
+
+    if (Toggle := !Toggle) {
+        Send {%AimKey% down}
+    } else {
+        Send {%AimKey% up}
+    }
+Return
 
 ; --- End Toggle Aim/ADS Logic ---
 
