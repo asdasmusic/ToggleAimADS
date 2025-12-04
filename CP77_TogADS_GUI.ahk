@@ -1,4 +1,11 @@
-; CP77_TogADS script by p0tat0gunner (Updated for MB4/MB5 + minor fixes)
+; CP77_TogADS script by p0tat0gunner (Updated for MB4/MB5 + persistence)
+
+;@Ahk2Exe-SetVersion 1.2.0.0
+;@Ahk2Exe-SetName Cyberpunk 2077 Toggle ADS Mod
+;@Ahk2Exe-SetDescription Enables Toggle ADS for Cyberpunk 2077
+;@Ahk2Exe-SetCompanyName p0tat0gunner
+;@Ahk2Exe-SetCopyright COPYRIGHT © 2025 p0tat0gunner
+
 #SingleInstance, Force
 FileInstall, tads_running.wav, %A_WorkingDir%\tads_running.wav, 1
 FileInstall, tads_closing.wav, %A_WorkingDir%\tads_closing.wav, 1
@@ -8,6 +15,8 @@ FileInstall, tads_enabled.wav, %A_WorkingDir%\tads_enabled.wav, 1
 selhk := false
 selmb := false
 Toggle := 0  ; Aim toggle state
+
+IniFile := A_WorkingDir . "\CP77_TogADS_keys.ini"
 
 Menu, Tray, NoStandard
 Menu, Tray, Add, Reset, ResetSub
@@ -30,14 +39,21 @@ Gui, Add, Edit, yp vCtrlHKE
 Gui, Font, cff0000
 Gui, Add, Text,, Please select your in-game Aim Key:
 Gui, Font, c00e3ff
-Gui, Add, Radio, vMK, Right Mouse Button
-Gui, Add, Radio,, Middle Mouse Button
-Gui, Add, Radio,, Side Mouse Button Up (MB5)
-Gui, Add, Radio,, Side Mouse Button Down (MB4)
-Gui, Add, Button, Default gSubmit, Confirm and Run with Selected Keys
+
+; Aim key radios (now with hwnd handles)
+Gui, Add, Radio, vMK hwndhAim1, Right Mouse Button
+Gui, Add, Radio, hwndhAim2, Middle Mouse Button
+Gui, Add, Radio, hwndhAim3, Side Mouse Button Up (MB5)
+Gui, Add, Radio, hwndhAim4, Side Mouse Button Down (MB4)
+
+; New persistence buttons (just above Confirm and Run)
+Gui, Add, Button, xm gSaveKeys, Save Keys
+Gui, Add, Button, x+10 gLoadKeys, Load Keys
+
+Gui, Add, Button, xm y+10 Default gSubmit, Confirm and Run with Selected Keys
 Gui, Font, s9
 Gui, Font, c00ff5b
-Gui, Add, Text, xm+85, © 2021 p0tat0gunner
+Gui, Add, Text, xm+85, © 2025 p0tat0gunner
 
 ; Initialize preview fields
 HKAEvent()
@@ -69,6 +85,83 @@ HKEEvent() {
     HKE := StrReplace(HKE, "!", "Alt + ")
     GuiControl, , CtrlHKE, % HKE ? HKE : "None"
 }
+
+; --- Save Keys button: persist HKA, HKE, MK ---
+SaveKeys:
+Gui, Submit, NoHide
+
+; Basic validation before saving
+if (HKA = "" || HKE = "")
+{
+    MsgBox, 16, Error, The Activation and Exit Hotkeys cannot be None.`nPlease assign both hotkeys before saving!
+    Return
+}
+if (HKA = HKE)
+{
+    MsgBox, 16, Error, The Activation and Exit Hotkeys cannot be the same.`nPlease re-assign unique hotkeys before saving!
+    Return
+}
+if (MK < 1 || MK > 4)
+{
+    MsgBox, 16, Error, Please select your Aim Key before saving!
+    Return
+}
+
+IniWrite, %HKA%, %IniFile%, Keys, HKA
+IniWrite, %HKE%, %IniFile%, Keys, HKE
+IniWrite, %MK%,  %IniFile%, Keys, MK
+
+MsgBox, 64, Saved, Keys have been saved successfully.
+Return
+
+; --- Load Keys button: load last saved HKA, HKE, MK ---
+LoadKeys:
+if !FileExist(IniFile)
+{
+    MsgBox, 16, Error, Please Save Keys first
+    Return
+}
+
+IniRead, sHKA, %IniFile%, Keys, HKA, 
+IniRead, sHKE, %IniFile%, Keys, HKE, 
+IniRead, sMK,  %IniFile%, Keys, MK, 0
+
+; If missing/invalid, treat as not saved yet
+if (sHKA = "" || sHKE = "" || sMK < 1 || sMK > 4)
+{
+    MsgBox, 16, Error, Please Save Keys first
+    Return
+}
+
+; Apply loaded values to variables
+HKA := sHKA
+HKE := sHKE
+MK  := sMK
+
+; Update hotkey GUI controls
+GuiControl, , HKA, %HKA%
+GuiControl, , HKE, %HKE%
+
+; Clear all aim radios
+GuiControl, , %hAim1%, 0
+GuiControl, , %hAim2%, 0
+GuiControl, , %hAim3%, 0
+GuiControl, , %hAim4%, 0
+
+; Check the correct one based on MK (1–4)
+if (MK = 1)
+    GuiControl, , %hAim1%, 1
+else if (MK = 2)
+    GuiControl, , %hAim2%, 1
+else if (MK = 3)
+    GuiControl, , %hAim3%, 1
+else if (MK = 4)
+    GuiControl, , %hAim4%, 1
+
+; Refresh preview text
+HKAEvent()
+HKEEvent()
+Return
 
 ; --- Submit button handler ---
 Submit:
@@ -143,7 +236,7 @@ GoSub, DeleteSub
 ExitApp
 Return
 
-; --- Toggle Aim/ADS Logic (unchanged behavior) ---
+; --- Toggle Aim/ADS Logic ---
 
 #If (MK = 1) ; Right Mouse Button
 *RButton Up::
