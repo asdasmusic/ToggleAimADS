@@ -1,4 +1,4 @@
-﻿;CP77_TogADS script by p0tat0gunner
+;CP77_TogADS script by p0tat0gunner (Updated for MB4/MB5)
 #SingleInstance, Force
 FileInstall, tads_running.wav, %A_WorkingDir%\tads_running.wav, 1
 FileInstall, tads_closing.wav, %A_WorkingDir%\tads_closing.wav, 1
@@ -10,6 +10,8 @@ Menu, Tray, NoStandard
 Menu, Tray, Add, Reset, ResetSub
 Menu, Tray, Add, Exit, ExitSub
 OnExit, ExitSub
+
+; --- GUI Definition (Updated) ---
 Gui, Color, 280000, Black
 Gui, Font, s13
 Gui, Font, cff0000
@@ -27,15 +29,18 @@ Gui, add, text,, Please select your in-game Aim Key:
 Gui, Font, c00e3ff
 Gui, add, Radio, vMK, Right Mouse Button
 Gui, add, Radio,, Middle Mouse Button
+Gui, add, Radio,, Side Mouse Button Up (MB5) ; New option 3
+Gui, add, Radio,, Side Mouse Button Down (MB4) ; New option 4
 Gui, add, Button, Default gSubmit, Confirm and Run with Selected Keys
 Gui, Font, s9
 Gui, Font, c00ff5b
-Gui, add, text, xm+85, © 2020 p0tat0gunner
+Gui, add, text, xm+85, © 2021 p0tat0gunner ; Updated year
 HKAEvent()
 HKEEvent()
 Gui, show, AutoSize, CP77 Toggle AIM/ADS GUI
-OnMessage(0x0F, "HKAEvent")  ; WM_PAINT = 0x0F
+OnMessage(0x0F, "HKAEvent") ; WM_PAINT = 0x0F
 Return
+
 HKAEvent() {
 GuiControlGet, HKA
 HKA := Format("{:T}", HKA)
@@ -53,6 +58,7 @@ HKE := StrReplace(HKE, "^", "Ctrl + ")
 HKE := StrReplace(HKE, "!", "Alt + ")
 GuiControl, , CtrlHKE, % HKE ? HKE : "None"
 }
+
 Submit:
 Gui, Submit
 If(HKA<>"" and HKE<>"")
@@ -74,7 +80,9 @@ selhk:= false
 Msgbox, 16, Error, The Activation and Exit Hotkeys cannot be None, Please Assign Both Hotkeys!
 Gui, show
 }
-If MK between 1 and 2
+
+; --- Aim Key Validation (Updated to include 4 options) ---
+If MK between 1 and 4
 {
 selmb:= true
 }
@@ -84,6 +92,7 @@ selmb:= false
 Msgbox, 16, Error, Please Select your Aim Key!
 Gui, show
 }
+
 If (selhk==true and selmb==true)
 {
 Hotkey, % HKA, RunHKA
@@ -96,6 +105,7 @@ MK=0
 Gui, show
 }
 Return
+
 RunHKA:
 Suspend, Toggle
 If Suspend:=!Suspend
@@ -103,6 +113,7 @@ SoundPlay, %A_WorkingDir%\tads_disabled.wav
 Else	
 SoundPlay, %A_WorkingDir%\tads_enabled.wav
 Return
+
 RunHKE:
 Suspend, Toggle
 SoundPlay, %A_WorkingDir%\tads_closing.wav, Wait
@@ -113,7 +124,9 @@ GuiClose:
 GoSub DeleteSub
 ExitApp
 Return
-#If MK=1
+
+; --- Toggle Aim/ADS Logic (Updated to include 4 options) ---
+#If MK=1 ; Right Mouse Button
 *RButton Up::
 If (Toggle := !Toggle){
 Send {Click Down Right}
@@ -123,7 +136,8 @@ Send {RButton up}
 }
 Return
 #If
-#If MK=2
+
+#If MK=2 ; Middle Mouse Button
 *MButton Up::
 If (Toggle := !Toggle){
 Send {Click Down Middle}
@@ -133,6 +147,30 @@ Send {MButton up}
 }
 Return
 #If
+
+#If MK=3 ; Side Mouse Button Up (MB5)
+*XButton2 Up::
+If (Toggle := !Toggle){
+Send {Click Down XButton2}
+}
+Else{
+Send {XButton2 up}
+}
+Return
+#If
+
+#If MK=4 ; Side Mouse Button Down (MB4)
+*XButton1 Up::
+If (Toggle := !Toggle){
+Send {Click Down XButton1}
+}
+Else{
+Send {XButton1 up}
+}
+Return
+#If
+; --- End Toggle Aim/ADS Logic ---
+
 ExitSub:
 If A_ExitReason not in Logoff,Shutdown
 {
