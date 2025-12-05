@@ -147,6 +147,21 @@ if (MK = 5 && AimKey = "")
     Return
 }
 
+; --- NEW: Keyboard AimKey must not match Activation or Exit keys when saving ---
+if (MK = 5)
+{
+    if (AimKey = HKA)
+    {
+        MsgBox, 16, Error, Keyboard Aim Key cannot be the same as the Activation Hotkey!
+        Return
+    }
+    if (AimKey = HKE)
+    {
+        MsgBox, 16, Error, Keyboard Aim Key cannot be the same as the Exit Hotkey!
+        Return
+    }
+}
+
 IniWrite, %HKA%,    %IniFile%, Keys, HKA
 IniWrite, %HKE%,    %IniFile%, Keys, HKE
 IniWrite, %MK%,     %IniFile%, Keys, MK
@@ -260,6 +275,23 @@ else
     selmb := false
     MsgBox, 16, Error, Please select your Aim Key!
     Gui, Show
+}
+
+; --- NEW: Keyboard AimKey must not match Activation or Exit keys when confirming ---
+if (selmb && MK = 5)
+{
+    if (AimKey = HKA)
+    {
+        selmb := false
+        MsgBox, 16, Error, Keyboard Aim Key cannot be the same as the Activation Hotkey!
+        Gui, Show
+    }
+    else if (AimKey = HKE)
+    {
+        selmb := false
+        MsgBox, 16, Error, Keyboard Aim Key cannot be the same as the Exit Hotkey!
+        Gui, Show
+    }
 }
 
 ; If both valid, bind hotkeys and start
