@@ -24,6 +24,7 @@ Menu, Tray, NoStandard
 Menu, Tray, Add, Reset, ResetSub
 Menu, Tray, Add, Exit, ExitSub
 OnExit, ExitSub
+Menu, Tray, Icon, %A_ScriptFullPath%
 
 ; --- GUI Definition (Updated) ---
 Gui, Color, 280000, Black
@@ -320,13 +321,21 @@ else
 }
 Return
 
-; --- Activation Hotkey: Toggle suspend + sounds ---
+; --- Activation Hotkey: Toggle suspend + sounds + tray icon ---
 RunHKA:
 Suspend, Toggle
 if (A_IsSuspended)
+{
     SoundPlay, %A_WorkingDir%\tads_disabled.wav
+    ; show disabled icon when hotkeys are suspended
+    Menu, Tray, Icon, %A_WorkingDir%\disable.ico
+}
 else
+{
     SoundPlay, %A_WorkingDir%\tads_enabled.wav
+    ; restore main script icon when enabled
+    Menu, Tray, Icon, %A_ScriptFullPath%
+}
 Return
 
 ; --- Exit Hotkey: Clean exit ---
@@ -416,4 +425,3 @@ FileDelete, %A_WorkingDir%\tads_enabled.wav
 FileDelete, %A_WorkingDir%\tads_running.wav
 FileDelete, %A_WorkingDir%\tads_closing.wav
 Return
-
