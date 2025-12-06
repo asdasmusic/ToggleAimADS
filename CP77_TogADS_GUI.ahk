@@ -147,7 +147,7 @@ if (MK = 5 && AimKey = "")
     Return
 }
 
-; --- NEW: Keyboard AimKey must not match Activation or Exit keys when saving ---
+; Keyboard AimKey must not match Activation or Exit keys when saving
 if (MK = 5)
 {
     if (AimKey = HKA)
@@ -277,7 +277,7 @@ else
     Gui, Show
 }
 
-; --- NEW: Keyboard AimKey must not match Activation or Exit keys when confirming ---
+; Keyboard AimKey must not match Activation or Exit keys when confirming
 if (selmb && MK = 5)
 {
     if (AimKey = HKA)
@@ -303,9 +303,12 @@ if (selhk && selmb)
     ; Set up keyboard aim hotkey if MK = 5
     if (MK = 5 && AimKey != "")
     {
-        ; Turn off any previous registration just in case
-        Hotkey, *%AimKey% Up, Off
-        Hotkey, *%AimKey% Up, KeyboardAim
+        ; Safely switch dynamic keyboard hotkey
+        static PrevAimKey := ""
+        if (PrevAimKey != "")
+            Hotkey, *%PrevAimKey% Up, KeyboardAim, Off
+        Hotkey, *%AimKey% Up, KeyboardAim, On
+        PrevAimKey := AimKey
     }
 
     SoundPlay, %A_WorkingDir%\tads_running.wav
