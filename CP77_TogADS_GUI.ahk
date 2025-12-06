@@ -175,7 +175,7 @@ Return
 LoadKeys:
 if !FileExist(IniFile)
 {
-    MsgBox, 16, Error, Please Save Keys first
+    MsgBox, 16, Error, Please Save Keys first!
     Return
 }
 
@@ -187,14 +187,14 @@ IniRead, sAimKey, %IniFile%, Keys, AimKey,
 ; If missing/invalid, treat as not saved yet
 if (sHKA = "" || sHKE = "" || sMK < 1 || sMK > 5)
 {
-    MsgBox, 16, Error, Please Save Keys first
+    MsgBox, 16, Error, Please Save Keys first!
     Return
 }
 
 ; If keyboard selected but aim key missing, also treat as invalid
 if (sMK = 5 && sAimKey = "")
 {
-    MsgBox, 16, Error, Please Save Keys first (Keyboard Aim key missing)
+    MsgBox, 16, Error, Please Save Keys first! (Keyboard Aim key missing)
     Return
 }
 
@@ -416,3 +416,4 @@ FileDelete, %A_WorkingDir%\tads_enabled.wav
 FileDelete, %A_WorkingDir%\tads_running.wav
 FileDelete, %A_WorkingDir%\tads_closing.wav
 Return
+
