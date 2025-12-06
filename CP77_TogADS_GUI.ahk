@@ -16,6 +16,7 @@ selhk := false
 selmb := false
 Toggle := 0  ; Aim toggle state
 AimKey := "" ; Keyboard aim key (for MK = 5)
+PrevAimKey := "" ; last registered keyboard aim hotkey
 
 IniFile := A_WorkingDir . "\CP77_TogADS_keys.ini"
 
@@ -116,7 +117,7 @@ AimKeyEvent() {
         return
     }
 
-    ; Valid single key: show as-is (nicely formatted)
+    ; Valid single key: show as-is (formatted)
     AimKeyText := Format("{:T}", AimKey)
     GuiControl, , CtrlAimKey, % AimKeyText ? AimKeyText : "None"
 }
@@ -304,7 +305,6 @@ if (selhk && selmb)
     if (MK = 5 && AimKey != "")
     {
         ; Safely switch dynamic keyboard hotkey
-        static PrevAimKey := ""
         if (PrevAimKey != "")
             Hotkey, *%PrevAimKey% Up, KeyboardAim, Off
         Hotkey, *%AimKey% Up, KeyboardAim, On
