@@ -15,9 +15,10 @@ FileInstall, tads_enabled.wav, %A_WorkingDir%\tads_enabled.wav, 1
 
 selhk := false
 selmb := false
-Toggle := 0  ; Aim toggle state
-AimKey := "" ; Keyboard aim key (for MK = 5)
-PrevAimKey := "" ; last registered keyboard aim hotkey
+Toggle := 0          ; Aim toggle state
+AimKey := ""         ; Keyboard aim key (for MK = 5)
+PrevAimKey := ""     ; last registered keyboard aim hotkey
+ToggleActive := false ; NEW: master flag to enable/disable ADS logic
 
 IniFile := A_WorkingDir . "\CP77_TogADS_keys.ini"
 
@@ -73,7 +74,7 @@ AimKeyEvent()
 
 Gui, Show, AutoSize, CP77 Toggle AIM/ADS GUI
 
-; Keep previews refreshed when GUI repaints (optional but harmless)
+; Keep previews refreshed when GUI repaints (optional)
 OnMessage(0x0F, "HKAEvent") ; WM_PAINT
 
 Return
@@ -185,6 +186,7 @@ if (PrevAimKey != "")
 
 Suspend, Off
 Toggle := 0
+ToggleActive := false   ; NEW: ADS logic fully disarmed after loading
 selhk := false
 selmb := false
 
@@ -326,11 +328,13 @@ if (selhk && selmb)
         PrevAimKey := AimKey
     }
 
+    ToggleActive := true   ; NEW: only now is ADS effectively armed
     SoundPlay, %A_WorkingDir%\tads_running.wav
 }
 else
 {
     MK := 0
+    ToggleActive := false   ; NEW: keep ADS disabled on failed confirm
     Gui, Show
 }
 Return
@@ -347,19 +351,21 @@ Return
 ; --- Exit Hotkey: Clean exit ---
 RunHKE:
 Suspend, Toggle
+ToggleActive := false   ; NEW: ADS logic off on exit
 SoundPlay, %A_WorkingDir%\tads_closing.wav, Wait
 GoSub, DeleteSub
 ExitApp
 Return
 
 GuiClose:
+ToggleActive := false   ; NEW: ADS logic off on GUI close
 GoSub, DeleteSub
 ExitApp
 Return
 
 ; --- Toggle Aim/ADS Logic ---
 
-#If (MK = 1) ; Right Mouse Button
+#If (ToggleActive && MK = 1) ; NEW: depend on ToggleActive as well as MK
 *RButton Up::
     if (Toggle := !Toggle) {
         Send {Click Down Right}
@@ -369,7 +375,7 @@ Return
 Return
 #If
 
-#If (MK = 2) ; Middle Mouse Button
+#If (ToggleActive && MK = 2)
 *MButton Up::
     if (Toggle := !Toggle) {
         Send {Click Down Middle}
@@ -379,7 +385,7 @@ Return
 Return
 #If
 
-#If (MK = 3) ; Side Mouse Button Up (MB5)
+#If (ToggleActive && MK = 3)
 *XButton2 Up::
     if (Toggle := !Toggle) {
         Send {Click Down XButton2}
@@ -389,7 +395,7 @@ Return
 Return
 #If
 
-#If (MK = 4) ; Side Mouse Button Down (MB4)
+#If (ToggleActive && MK = 4)
 *XButton1 Up::
     if (Toggle := !Toggle) {
         Send {Click Down XButton1}
@@ -401,8 +407,8 @@ Return
 
 ; For MK = 5 (Keyboard), the hotkey is dynamic via Hotkey command
 KeyboardAim:
-    ; Extra safety: only act if MK = 5 and AimKey is set
-    if (MK != 5 || AimKey = "")
+    ; Extra safety: only act if MK = 5, AimKey is set, and ADS is armed
+    if (!ToggleActive || MK != 5 || AimKey = "")
         Return
 
     if (Toggle := !Toggle) {
@@ -415,7 +421,8 @@ Return
 ; --- End Toggle Aim/ADS Logic ---
 
 ExitSub:
-    ; Always delete temp sound files
+    ; Always delete temp sound files and fully disarm
+    ToggleActive := false
     GoSub, DeleteSub
     ExitApp
 Return
