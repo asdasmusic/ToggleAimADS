@@ -5,6 +5,7 @@
 ;@Ahk2Exe-SetDescription Enables Toggle ADS for Cyberpunk 2077
 ;@Ahk2Exe-SetCompanyName p0tat0gunner
 ;@Ahk2Exe-SetCopyright COPYRIGHT © 2025 p0tat0gunner
+;@Ahk2Exe-AddResource disable.ico, 206
 
 #SingleInstance, Force
 FileInstall, tads_running.wav, %A_WorkingDir%\tads_running.wav, 1
@@ -24,7 +25,6 @@ Menu, Tray, NoStandard
 Menu, Tray, Add, Reset, ResetSub
 Menu, Tray, Add, Exit, ExitSub
 OnExit, ExitSub
-Menu, Tray, Icon, %A_ScriptFullPath%
 
 ; --- GUI Definition (Updated) ---
 Gui, Color, 280000, Black
@@ -174,6 +174,20 @@ Return
 
 ; --- Load Keys button: load last saved HKA, HKE, MK, AimKey ---
 LoadKeys:
+; Turn off any currently active hotkeys and reset toggle state.
+; This ensures loading config does NOT make anything active until Confirm is pressed.
+if (HKA != "")
+    Hotkey, %HKA%, Off
+if (HKE != "")
+    Hotkey, %HKE%, Off
+if (PrevAimKey != "")
+    Hotkey, *%PrevAimKey% Up, KeyboardAim, Off
+
+Suspend, Off
+Toggle := 0
+selhk := false
+selmb := false
+
 if !FileExist(IniFile)
 {
     MsgBox, 16, Error, Please Save Keys first!
@@ -321,21 +335,13 @@ else
 }
 Return
 
-; --- Activation Hotkey: Toggle suspend + sounds + tray icon ---
+; --- Activation Hotkey: Toggle suspend + sounds ---
 RunHKA:
 Suspend, Toggle
 if (A_IsSuspended)
-{
     SoundPlay, %A_WorkingDir%\tads_disabled.wav
-    ; show disabled icon when hotkeys are suspended
-    Menu, Tray, Icon, %A_WorkingDir%\disable.ico
-}
 else
-{
     SoundPlay, %A_WorkingDir%\tads_enabled.wav
-    ; restore main script icon when enabled
-    Menu, Tray, Icon, %A_ScriptFullPath%
-}
 Return
 
 ; --- Exit Hotkey: Clean exit ---
@@ -409,8 +415,7 @@ Return
 ; --- End Toggle Aim/ADS Logic ---
 
 ExitSub:
-    ; Always play closing sound and delete temp sound files
-    ; SoundPlay, null000.wav
+    ; Always delete temp sound files
     GoSub, DeleteSub
     ExitApp
 Return
