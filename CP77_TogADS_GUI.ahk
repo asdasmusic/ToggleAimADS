@@ -15,10 +15,12 @@ FileInstall, tads_enabled.wav, %A_WorkingDir%\tads_enabled.wav, 1
 
 selhk := false
 selmb := false
-Toggle := 0          ; Aim toggle state
-AimKey := ""         ; Keyboard aim key (for MK = 5)
-PrevAimKey := ""     ; last registered keyboard aim hotkey
-ToggleActive := false ; NEW: master flag to enable/disable ADS logic
+Toggle := 0              ; Aim toggle state
+AimKey := ""             ; Keyboard aim key (for MK = 5)
+PrevAimKey := ""         ; last registered keyboard aim hotkey
+PrevHKA := ""            ; last registered activation hotkey
+PrevHKE := ""            ; last registered exit hotkey
+ToggleActive := false    ; master flag to enable/disable ADS logic
 
 IniFile := A_WorkingDir . "\CP77_TogADS_keys.ini"
 
@@ -176,17 +178,17 @@ Return
 ; --- Load Keys button: load last saved HKA, HKE, MK, AimKey ---
 LoadKeys:
 ; Turn off any currently active hotkeys and reset toggle state.
-; This ensures loading config does NOT make anything active until Confirm is pressed.
-if (HKA != "")
-    Hotkey, %HKA%, Off
-if (HKE != "")
-    Hotkey, %HKE%, Off
+; Use *previously registered* hotkeys only to avoid Nonexistent hotkey error.
+if (PrevHKA != "")
+    Hotkey, %PrevHKA%, RunHKA, Off
+if (PrevHKE != "")
+    Hotkey, %PrevHKE%, RunHKE, Off
 if (PrevAimKey != "")
     Hotkey, *%PrevAimKey% Up, KeyboardAim, Off
 
 Suspend, Off
 Toggle := 0
-ToggleActive := false   ; NEW: ADS logic fully disarmed after loading
+ToggleActive := false
 selhk := false
 selmb := false
 
@@ -315,26 +317,35 @@ if (selmb && MK = 5)
 ; If both valid, bind hotkeys and start
 if (selhk && selmb)
 {
-    Hotkey, %HKA%, RunHKA
-    Hotkey, %HKE%, RunHKE
+    ; Turn off previous activation/exit bindings if they were different
+    if (PrevHKA != "" && PrevHKA != HKA)
+        Hotkey, %PrevHKA%, RunHKA, Off
+    if (PrevHKE != "" && PrevHKE != HKE)
+        Hotkey, %PrevHKE%, RunHKE, Off
+
+    ; Bind new activation/exit hotkeys
+    Hotkey, %HKA%, RunHKA, On
+    Hotkey, %HKE%, RunHKE, On
+    PrevHKA := HKA
+    PrevHKE := HKE
 
     ; Set up keyboard aim hotkey if MK = 5
     if (MK = 5 && AimKey != "")
     {
         ; Safely switch dynamic keyboard hotkey
-        if (PrevAimKey != "")
+        if (PrevAimKey != "" && PrevAimKey != AimKey)
             Hotkey, *%PrevAimKey% Up, KeyboardAim, Off
         Hotkey, *%AimKey% Up, KeyboardAim, On
         PrevAimKey := AimKey
     }
 
-    ToggleActive := true   ; NEW: only now is ADS effectively armed
+    ToggleActive := true   ; ADS armed only after successful confirm
     SoundPlay, %A_WorkingDir%\tads_running.wav
 }
 else
 {
     MK := 0
-    ToggleActive := false   ; NEW: keep ADS disabled on failed confirm
+    ToggleActive := false
     Gui, Show
 }
 Return
@@ -351,21 +362,21 @@ Return
 ; --- Exit Hotkey: Clean exit ---
 RunHKE:
 Suspend, Toggle
-ToggleActive := false   ; NEW: ADS logic off on exit
+ToggleActive := false
 SoundPlay, %A_WorkingDir%\tads_closing.wav, Wait
 GoSub, DeleteSub
 ExitApp
 Return
 
 GuiClose:
-ToggleActive := false   ; NEW: ADS logic off on GUI close
+ToggleActive := false
 GoSub, DeleteSub
 ExitApp
 Return
 
 ; --- Toggle Aim/ADS Logic ---
 
-#If (ToggleActive && MK = 1) ; NEW: depend on ToggleActive as well as MK
+#If (ToggleActive && MK = 1) ; Right Mouse Button
 *RButton Up::
     if (Toggle := !Toggle) {
         Send {Click Down Right}
@@ -375,7 +386,7 @@ Return
 Return
 #If
 
-#If (ToggleActive && MK = 2)
+#If (ToggleActive && MK = 2) ; Middle Mouse Button
 *MButton Up::
     if (Toggle := !Toggle) {
         Send {Click Down Middle}
@@ -385,7 +396,7 @@ Return
 Return
 #If
 
-#If (ToggleActive && MK = 3)
+#If (ToggleActive && MK = 3) ; Side Mouse Button Up (MB5)
 *XButton2 Up::
     if (Toggle := !Toggle) {
         Send {Click Down XButton2}
@@ -395,7 +406,7 @@ Return
 Return
 #If
 
-#If (ToggleActive && MK = 4)
+#If (ToggleActive && MK = 4) ; Side Mouse Button Down (MB4)
 *XButton1 Up::
     if (Toggle := !Toggle) {
         Send {Click Down XButton1}
@@ -421,7 +432,6 @@ Return
 ; --- End Toggle Aim/ADS Logic ---
 
 ExitSub:
-    ; Always delete temp sound files and fully disarm
     ToggleActive := false
     GoSub, DeleteSub
     ExitApp
