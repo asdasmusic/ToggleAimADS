@@ -400,12 +400,10 @@ Return
 ; --- End Toggle Aim/ADS Logic ---
 
 ExitSub:
-if (A_ExitReason not in Logoff, Shutdown)
-{
-    SoundPlay, null000.wav
+    ; Always play closing sound and delete temp sound files
+    ; SoundPlay, null000.wav
     GoSub, DeleteSub
-}
-ExitApp
+    ExitApp
 Return
 
 ResetSub:
